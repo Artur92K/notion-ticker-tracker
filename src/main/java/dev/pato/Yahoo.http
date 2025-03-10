@@ -1,0 +1,57 @@
+POST http://localhost:80/api/item
+Content-Type: application/json
+
+{}
+
+###
+### GET request to example server
+GET https://query1.finance.yahoo.com/v8/finance/chart/name?interval=1h&range=1h
+
+###
+
+
+
+GET https://api.notion.com/v1/databases/13a95ada4c4f808e968df485dfe6595a
+Authorization: Bearer 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
+Notion-Version: 2022-06-28
+Content-Type: application/json
+###
+
+PATCH https://api.notion.com/v1/pages/13a95ada-4c4f-80c5-9290-ddd79a1edf52
+Authorization: Bearer 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
+Notion-Version: 2022-06-28
+Content-Type: application/json
+#
+#{
+#  "properties": {
+#    "Value": {
+#      "number": 777.0
+#    },
+#    "Currency": {
+#      "rich_text": [
+#        {
+#          "text": {
+#            "content": "TEST"
+#          }
+#        }
+#      ]
+#    },
+#    "Name": {
+#      "rich_text": [
+#        {
+#          "text": {
+#            "content": "Tst name"
+#          }
+#        }
+#      ]
+#    }
+#  }
+#}
+#
+
+###
+
+GET https://api.notion.com/v1/databases/13a95ada-4c4f-808e-968d-f485dfe6595a
+Authorization: Bearer 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
+Notion-Version: 2022-06-28
+Content-Type: application/json
