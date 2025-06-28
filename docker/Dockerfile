@@ -16,11 +16,15 @@ FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 
+# Set timezone to Warsaw
+ENV TZ=Europe/Warsaw
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Copy the built JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
 # Expose port 21801
 EXPOSE 21801
 
-# Run the application
-CMD ["java", "-jar", "app.jar"]
+# Set Java timezone and run the application
+CMD ["java", "-Duser.timezone=Europe/Warsaw", "-jar", "app.jar"]
