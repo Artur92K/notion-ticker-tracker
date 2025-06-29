@@ -5,12 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -20,62 +19,19 @@ import java.util.Optional;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class MyIntegration {
 
-    public static final String UPDATEURL = "https://api.notion.com/v1/pages/";
-    public static final String AUTHORIZATION = "Authorization";
+    private static final String UPDATE_URL = "https://api.notion.com/v1/pages/";
+    private static final String AUTHORIZATION = "Authorization";
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private final WebClient webClient = WebClient.builder()
-            .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-            .defaultHeader("Notion-Version", "2022-06-28")
-//            .defaultHeader(AUTHORIZATION, "Bearer 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")
-            .build();
-
-    @PostConstruct
-    public void init() {
-        update("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", "13a95ada4c4f808e968df485dfe6595a");
-    }
+    private final WebClient integrationWebClient;
 
     void update(String apikey, String database) {
 
-
         JsonNode databaseJsonNode = fetchDatabase(database, apikey);
-
-//        var a = StreamSupport.stream(databaseJsonNode.spliterator(), false)
-//                .filter(e -> {
-//                    JsonNode jsonNode = e.get("properties").get("Ticker").get("title");
-//                    return jsonNode != null && !jsonNode.isEmpty(); // Filter out invalid entries
-//                })
-//                .collect(Collectors.toMap(
-//                        e -> e.get("id").asText(), // Key: pageId
-//                        e -> e.get("properties")
-//                                .get("Ticker")
-//                                .get("title")
-//                                .get(0)
-//                                .get("plain_text")
-//                                .asText() // Value: name
-//                ));
-//
-//
-//        ExecutorService executor = Executors.newFixedThreadPool(10); // Limit concurrency to 10 threads
-//
-//        Map<String, Model.ChartResponse> asd = Flux.fromIterable(a.entrySet())
-//                .parallel()
-//                .runOn(Schedulers.fromExecutor(executor)) // Use custom thread pool
-//                .map(entry -> {
-//                    String id = entry.getKey();
-//                    String name = entry.getValue();
-//                    Model.ChartResponse response = getStockPrices(name); // Call the synchronous method
-//                    return Tuples.of(id, response);
-//                })
-//                .filter(s -> s.getT2().getChart().getResult()!=null)
-//                .sequential()
-//                .collectMap(Tuple2::getT1, Tuple2::getT2)
-//                .block();
-//
-//
 
         databaseJsonNode.forEach(e ->
 
@@ -102,33 +58,29 @@ public class MyIntegration {
                         log.info("Current price is {}, {}, {} ", meta.getSymbol(), regularMarketPrice, meta.getCurrency());
 
                         createJson(Double.parseDouble(regularMarketPrice), currency, meta.getExchangeName())
-                                .ifPresent(r -> webClient
+                                .ifPresent(r -> integrationWebClient
                                         .patch()
-                                        .uri(UPDATEURL + pageId)
-                                        .header(AUTHORIZATION, apikey) // Add your header here
+                                        .uri(UPDATE_URL + pageId)
+                                        .header(AUTHORIZATION, apikey)
                                         .bodyValue(r)
                                         .exchangeToMono(g -> g.bodyToMono(String.class))
                                         .block());
                     });
-
-
         });
     }
 
     private JsonNode fetchDatabase(String database, String apikey) {
-        HttpHeaders headers = getHeaders(apikey);
+        HttpHeaders headers = WebClientConfig.getHeaders(apikey);
         HttpEntity<String> entity = new HttpEntity<>("{}", headers);
         String url = "https://api.notion.com/v1/databases/" + database + "/query";
         return mapper.convertValue(restTemplate.exchange(url, HttpMethod.POST, entity, Map.class).getBody().get("results"), JsonNode.class);
-
     }
-
 
     private Model.ChartResponse getStockPrices(String name) {
 
         String url = String.format("https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1h&range=1h", name);
 
-        var response = webClient.get()
+        var response = integrationWebClient.get()
                 .uri(url)
                 .exchangeToMono(g -> g.bodyToMono(String.class))
                 .block();
@@ -140,16 +92,8 @@ public class MyIntegration {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
     }
 
-    private HttpHeaders getHeaders(String apikey) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apikey);
-        headers.set("Notion-Version", "2022-06-28");
-        headers.set("Content-Type", "application/json");
-        return headers;
-    }
 
     public static Optional<String> createJson(double number, String currency, String name) {
         try {
